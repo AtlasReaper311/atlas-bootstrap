@@ -1,0 +1,24 @@
+{
+  "owner": "AtlasReaper311",
+  "note": "Paths are relative to the base directory (default /mnt/l/Atlas-Systems). Private repos clone through gh's auth; missing access warns and continues.",
+  "repos": [
+    { "name": "atlas-systems",        "path": "atlas-systems" },
+    { "name": "atlas-infra",          "path": "atlas-infra" },
+    { "name": "atlas-notify",         "path": "atlas-notify" },
+    { "name": "ramone-edge",          "path": "ramone-edge" },
+    { "name": "github-pulse",         "path": "github-pulse" },
+    { "name": "site-pulse",           "path": "site-pulse" },
+    { "name": "deploy-watch",         "path": "deploy-watch" },
+    { "name": "atlas-vault",          "path": "atlas-vault" },
+    { "name": "ollama-rag-kit",       "path": "ollama-rag-kit" },
+    { "name": "atlas-kit-python-rag", "path": "atlas-kit-python-rag" },
+    { "name": "ramone-memory",        "path": "ramone-memory" },
+    { "name": "specular-telemetry",   "path": "specular-telemetry" },
+    { "name": "ramone-voice-trigger", "path": "ramone-voice-trigger" },
+    { "name": "atlas-corpus",         "path": "atlas-corpus" },
+    { "name": "atlas-api-index",      "path": "atlas-api-index" },
+    { "name": "atlas-bootstrap",      "path": "atlas-bootstrap" },
+    { "name": "atlas-scheduler",      "path": "atlas-scheduler",   "private": true },
+    { "name": "atlas-article-gen",    "path": "atlas-article-gen", "private": true }
+  ]
+}

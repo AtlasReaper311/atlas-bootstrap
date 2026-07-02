@@ -1,0 +1,5 @@
+[
+  "llama3.1:8b",
+  "qwen2.5:32b",
+  "nomic-embed-text"
+]

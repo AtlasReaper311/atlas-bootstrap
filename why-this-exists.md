@@ -1,0 +1,11 @@
+# Why this exists
+
+Every working machine is a pile of undocumented decisions. The systemd drop-in that binds Ollama to `0.0.0.0`, the portproxy rules that make WSL2 reachable, the group membership that lets Docker run without sudo, the one apt repo added eight months ago for a CLI nobody remembers installing: each was obvious the day it happened and invisible ever since. The machine works, so the knowledge feels stored. It is not stored; it is deployed, in exactly one place, on hardware with a mean time between failures.
+
+Environment-as-code is the discipline of refusing that arrangement. Not because reinstalling tools is hard, but because remembering which tools, in which order, with which one-line configuration fixes, is the part that takes a weekend and produces a machine that is almost the same. The bootstrap turns that weekend into a script whose sections are the documentation: reading `bootstrap.sh` top to bottom is reading an honest inventory of what SPECULAR-CORE actually depends on, checked into git where drift produces a diff instead of a mystery.
+
+Idempotence is what makes it a discipline rather than an install script. A script that can only run on a bare machine is a fire extinguisher behind glass, tested never. One where every section checks before it changes gets run casually, after a broken update, to onboard a loaner laptop, to fix one section in isolation, and every casual run is also a rehearsal of the disaster it exists for. The portproxy section is the sharpest example: WSL2 re-addresses on every reboot, so the fix is not a correct rule but a mechanism that re-derives the rule at every boot. Code that runs once configures a machine; code that runs at startup owns a behaviour.
+
+The exercise also forces an inventory of what reconstruction deliberately excludes. Tunnel identity, wrangler auth, Home Assistant state: those live where they live, and writing the bootstrap made that boundary explicit instead of assumed. Knowing what a recovery script does not restore is worth nearly as much as the script.
+
+The transferable principle: a machine you can rebuild from a repo is cattle; a machine you are afraid to touch is a pet with root access to your life. The rebuild script is how you find out which one you have, before the hardware decides for you.
