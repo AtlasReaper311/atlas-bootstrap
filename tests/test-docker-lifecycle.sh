@@ -43,6 +43,7 @@ if [ "\$1" = "inspect" ]; then
     *RestartPolicy.Name*) echo "$restart" ;;
     *HostConfig.NetworkMode*) echo "$mode" ;;
     *NetworkSettings.Networks*) echo "$networks" ;;
+    *NetworkSettings.Ports*) echo '{"8080/tcp":[{"HostIp":"0.0.0.0","HostPort":"3000"}]}' ;;
   esac
   exit 0
 fi
@@ -81,5 +82,6 @@ assert_fail assert_openwebui_container_shape open-webui
 write_fake_docker "Ubuntu 26.04 LTS" "SPECULAR-CORE" "/var/lib/docker"
 write_fake_ss "echo 'LISTEN 0 4096 *:3000 *:* users:((\"python\",pid=99,fd=3))'"
 assert_fail assert_port_not_stale 3000
+assert_pass assert_port_not_stale 3000 open-webui
 
 echo "docker lifecycle tests passed"

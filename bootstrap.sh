@@ -251,7 +251,7 @@ start_services() {
       assert_openwebui_container_shape "$canonical_container"
     fi
     if [ -n "$host_port" ]; then
-      assert_port_not_stale "$host_port"
+      assert_port_not_stale "$host_port" "$canonical_container"
     fi
     log "  $name: docker compose up -d"
     (cd "$dir" && docker_cmd compose up -d) \

@@ -100,12 +100,19 @@ assert_openwebui_container_shape() {
 }
 
 assert_port_not_stale() {
-  local port owner
+  local port expected_container owner published
   port="$1"
+  expected_container="${2:-}"
   owner="$("$SS_BIN" -ltnp "sport = :$port" 2>/dev/null || true)"
 
   if printf '%s\n' "$owner" | grep -q LISTEN; then
     if ! printf '%s\n' "$owner" | grep -q 'docker-proxy'; then
+      if [ -n "$expected_container" ] && container_exists "$expected_container"; then
+        published="$("$DOCKER_BIN" inspect "$expected_container" --format '{{json .NetworkSettings.Ports}}')"
+        if printf '%s\n' "$published" | grep -q "\"HostPort\":\"$port\""; then
+          return 0
+        fi
+      fi
       docker_lifecycle_die "Port $port is already listening outside Docker's native proxy. Clear that owner manually before recreating Open WebUI."
     fi
   fi
@@ -138,7 +145,7 @@ wait_openwebui_ready() {
   name="${1:-open-webui}"
 
   assert_container_network_attached "$name"
-  "$DOCKER_BIN" exec "$name" sh -lc 'ip route | grep -q "^default "' >/dev/null 2>&1 \
+  "$DOCKER_BIN" exec "$name" sh -lc "grep -Eq '^[^[:space:]]+[[:space:]]+00000000[[:space:]]' /proc/net/route" >/dev/null 2>&1 \
     || docker_lifecycle_die "$name has no default route."
   wait_http "Open WebUI" "http://127.0.0.1:3000/health" 45 2
 }

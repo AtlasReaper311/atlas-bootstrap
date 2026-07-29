@@ -63,7 +63,7 @@ STEP "check Open WebUI compose file"
 test -f "$COMPOSE_DIR/docker-compose.yml"
 
 STEP "check stale port owner"
-assert_port_not_stale 3000
+assert_port_not_stale 3000 open-webui
 
 PART "3 - canonical recreate"
 STEP "stop only canonical Open WebUI if it exists"

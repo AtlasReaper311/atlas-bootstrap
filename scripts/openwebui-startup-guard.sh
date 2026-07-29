@@ -32,7 +32,7 @@ then
 fi
 
 STEP "check stale port owner"
-assert_port_not_stale 3000
+assert_port_not_stale 3000 open-webui
 
 PART "2 - start"
 STEP "start canonical Open WebUI compose service"
