@@ -17,7 +17,7 @@
 
 param(
     [switch]$RegisterTask,
-    [int[]]$Ports = @(8000, 8080, 8081, 8091, 8092, 9000, 11434),
+    [int[]]$Ports = @(3000, 8000, 8080, 8081, 8091, 8092, 8093, 9000, 11434),
     [string]$Distro = "Ubuntu"
 )
 

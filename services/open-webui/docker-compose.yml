@@ -1,0 +1,26 @@
+name: atlas-open-webui
+
+services:
+  open-webui:
+    container_name: open-webui
+    image: ghcr.io/open-webui/open-webui:v0.11.0
+    restart: unless-stopped
+    ports:
+      - "3000:8080"
+    volumes:
+      - ${ATLAS_OPENWEBUI_DATA:-/home/atlas/openwebui-core-data}:/app/backend/data
+      - ${ATLAS_OPENWEBUI_THEME:-/mnt/l/Atlas-Systems/openwebui-theme/atlas-custom.css}:/app/build/static/custom.css:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request as r; r.urlopen('http://localhost:8080/health', timeout=5)",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s

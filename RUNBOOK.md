@@ -35,7 +35,7 @@ bash bootstrap.sh --only clone_repos
 
 **WslEnsure.** Installs WSL2 + Ubuntu when missing, then deliberately exits: the install usually wants a reboot and always wants the Ubuntu first-run user creation. Reboot, create the user, re-run the whole script; every earlier section no-ops.
 
-**DockerDesktop.** Skipped when native Docker Engine is detected inside WSL2, because the estate standard is the Engine and Docker Desktop's WSL integration fights it. `-ForceDockerDesktop` overrides.
+**DockerDesktop.** Skipped when native Docker Engine is detected inside WSL2, because the estate standard is the Engine. Docker Desktop may be installed, but must not own the estate Docker context or port bindings. `-ForceDockerDesktop` is only for machines that deliberately choose Desktop instead of SPECULAR-CORE's native Engine.
 
 **Portproxy.** Runs `lib\portproxy.ps1 -RegisterTask`: refreshes the port rules against the current WSL2 IP (delete-then-add), refreshes the one firewall rule, registers the SYSTEM task "Atlas WSL2 Portproxy Refresh" (at startup and at logon). This supersedes the old `ATLAS_BOOTSTRAP.bat` and closes its documented gap. If a service is unreachable from Windows after a reboot, this section is the first suspect: `-Only Portproxy` and retest.
 
@@ -63,7 +63,11 @@ bash bootstrap.sh --only clone_repos
 
 **pull_models.** `ollama pull` for `lib/models.json`, skipping models already present. `qwen2.5:32b` is the long pole (~20GB); `--skip-models` defers the whole section for a fast bring-up.
 
-**start_services.** `docker compose up -d` in each non-external service path from `lib/services.json`. Missing compose file warns and skips. atlas-corpus refusing to start means its fail-closed `CORPUS_SECRET` is still empty: that is the design working.
+**start_services.** `docker compose up -d` in each non-external service path from `lib/services.json`. Missing compose file warns and skips. The section first proves the Docker CLI is talking to the native WSL Engine, not Docker Desktop. It never starts all existing containers; only the service allowlist is considered. atlas-corpus refusing to start means its fail-closed `CORPUS_SECRET` is still empty: that is the design working.
+
+**Open WebUI.** Owned by `atlas-bootstrap/services/open-webui/docker-compose.yml`. The canonical container is `open-webui`, image `ghcr.io/open-webui/open-webui:v0.11.0`, published as `3000:8080`, with `/home/atlas/openwebui-core-data` bound to `/app/backend/data` and the Atlas theme bound read-only. Startup treats `NetworkMode=bridge` with no attached Docker networks as unhealthy even if a container health check looks green. Retired or backup Open WebUI containers must stay stopped with restart disabled and are never selected by startup.
+
+**Live Open WebUI recovery.** `scripts/openwebui-live-recovery.sh` is intentionally not part of normal bootstrap. Run it only after explicit live migration approval. It backs up and verifies `webui.db`, stops/removes only the canonical `open-webui` container, recreates it from the canonical Compose file, verifies network/default route/port/health, and checks the local postmortem bridge without printing the bearer token. It does not enable `atlas-postmortem.timer` and expects `DRAFT_ENABLED=false`.
 
 **health_check.** `lib/health-check.sh`; table plus non-zero exit when anything is down.
 
