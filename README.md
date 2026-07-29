@@ -81,7 +81,9 @@ Every section, every failure mode, and every recovery move is in [RUNBOOK.md](RU
 
 **The portproxy gap is closed, not patched.** WSL2 re-addresses on every reboot; the old `ATLAS_BOOTSTRAP.bat` refreshed rules only when remembered. `lib/portproxy.ps1` refreshes delete-then-add (idempotent against the drift) and registers itself as a SYSTEM task at startup and logon, so the fix survives the next reboot without anyone remembering anything.
 
-**Docker Desktop yields to the Engine.** The estate runs native Docker Engine inside WSL2; Desktop's WSL integration fights it. The section detects the Engine and skips Desktop, `-ForceDockerDesktop` for machines that genuinely want it.
+**Docker Desktop yields to the Engine.** The estate runs native Docker Engine inside WSL2. Docker Desktop may be installed, but must not own the estate Docker context or port bindings. The section detects the Engine and skips Desktop, `-ForceDockerDesktop` for machines that genuinely want it.
+
+**Open WebUI has one owner.** `atlas-bootstrap/services/open-webui/docker-compose.yml` owns the canonical `open-webui` container. Startup does not scan and start old containers; it starts the allowlisted Compose services and verifies that Open WebUI has a real network, default route, published port, and health endpoint.
 
 **Secrets are seeded, never invented.** `.env.example` becomes `.env` with defaults; the run then names exactly which keys need Proton Pass values. atlas-corpus refusing to start on an empty `CORPUS_SECRET` is its fail-closed design working, and the health table makes that visible instead of silent.
 

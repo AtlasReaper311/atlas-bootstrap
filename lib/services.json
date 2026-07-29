@@ -1,10 +1,11 @@
 {
   "note": "compose services are started by bootstrap (docker compose up -d in their path); external services are only health-checked because something else owns their lifecycle (systemd unit, scheduled task, host install).",
   "services": [
-    { "name": "ollama",             "path": "",                   "external": true,  "health": "http://localhost:11434/api/tags" },
-    { "name": "ramone-rag (kit)",   "path": "ollama-rag-kit",     "external": false, "health": "http://localhost:8000/health" },
-    { "name": "ramone-memory",      "path": "ramone-memory",      "external": false, "health": "http://localhost:8091/health" },
-    { "name": "atlas-corpus",       "path": "atlas-corpus",       "external": false, "health": "http://localhost:8092/health" },
-    { "name": "specular-telemetry", "path": "specular-telemetry", "external": true,  "health": "http://localhost:9000/health" }
+    { "name": "ollama",             "path": "",                                   "external": true,  "health": "http://localhost:11434/api/tags" },
+    { "name": "open-webui",         "path": "atlas-bootstrap/services/open-webui", "external": false, "health": "http://localhost:3000/health", "canonical_container": "open-webui", "host_port": 3000 },
+    { "name": "ramone-rag (kit)",   "path": "ollama-rag-kit",                     "external": false, "health": "http://localhost:8093/health" },
+    { "name": "ramone-memory",      "path": "ramone-memory",                      "external": false, "health": "http://localhost:8091/health" },
+    { "name": "atlas-corpus",       "path": "atlas-corpus",                       "external": false, "health": "http://localhost:8092/health" },
+    { "name": "specular-telemetry", "path": "specular-telemetry",                 "external": true,  "health": "http://localhost:9000/health" }
   ]
 }

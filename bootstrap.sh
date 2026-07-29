@@ -18,6 +18,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB="${SCRIPT_DIR}/lib"
+. "${LIB}/docker-lifecycle.sh"
 
 BASE="${ATLAS_BASE:-/mnt/l/Atlas-Systems}"
 ONLY=""
@@ -104,6 +105,7 @@ docker_engine() {
     log "  added $USER to the docker group (takes effect on next login; this run uses sudo)"
   fi
   log "  docker engine ready"
+  assert_native_docker_authority
 }
 
 # --------------------------------------------------------------------- #
@@ -228,11 +230,14 @@ pull_models() {
 # --------------------------------------------------------------------- #
 start_services() {
   log "start_services"
+  assert_native_docker_authority
   while IFS= read -r entry; do
-    local name path external dir
+    local name path external dir canonical_container host_port
     name=$(jq -r '.name' <<<"$entry")
     path=$(jq -r '.path' <<<"$entry")
     external=$(jq -r '.external' <<<"$entry")
+    canonical_container=$(jq -r '.canonical_container // ""' <<<"$entry")
+    host_port=$(jq -r '.host_port // ""' <<<"$entry")
     if [ "$external" = "true" ]; then
       log "  $name: external lifecycle, not started here"
       continue
@@ -242,9 +247,19 @@ start_services() {
       warn "  $name: no docker-compose.yml at $dir; skipping"
       continue
     fi
+    if [ "$canonical_container" = "open-webui" ] && container_exists "$canonical_container"; then
+      assert_openwebui_container_shape "$canonical_container"
+    fi
+    if [ -n "$host_port" ]; then
+      assert_port_not_stale "$host_port"
+    fi
     log "  $name: docker compose up -d"
     (cd "$dir" && docker_cmd compose up -d) \
       || warn "  $name: compose up failed (unset secret? see RUNBOOK 'Seeding secrets')"
+    if [ "$canonical_container" = "open-webui" ]; then
+      assert_openwebui_container_shape "$canonical_container"
+      wait_openwebui_ready "$canonical_container"
+    fi
   done < <(jq -c '.services[]' "$LIB/services.json")
 }
 
