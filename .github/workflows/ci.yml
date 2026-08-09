@@ -28,6 +28,10 @@ jobs:
         run: |
           bash -n bootstrap.sh
           bash -n lib/health-check.sh
+          bash -n lib/docker-lifecycle.sh
+
+      - name: Test Docker lifecycle guards
+        run: bash tests/test-docker-lifecycle.sh
 
       - name: JSON validity
         run: |
