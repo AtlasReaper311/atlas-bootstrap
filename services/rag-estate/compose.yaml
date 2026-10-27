@@ -1,0 +1,156 @@
+name: rag-estate
+
+services:
+  qdrant:
+    image: ${QDRANT_IMAGE_REF:?QDRANT_IMAGE_REF must be an immutable image@sha256 ref}
+    restart: unless-stopped
+    user: "65532:65532"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
+    env_file:
+      - path: ${RAG_SECRET_ROOT:?RAG_SECRET_ROOT must point to the protected secret directory}/qdrant.env
+        required: true
+    environment:
+      QDRANT__SERVICE__ENABLE_TLS: "true"
+      QDRANT__SERVICE__HOST: 0.0.0.0
+      QDRANT__TLS__CERT: /run/qdrant-tls/cert.pem
+      QDRANT__TLS__KEY: /run/qdrant-tls/key.pem
+      QDRANT__TELEMETRY_DISABLED: "true"
+    volumes:
+      - qdrant-data:/qdrant/storage
+      - qdrant-snapshots:/qdrant/snapshots
+      - qdrant-tls:/run/qdrant-tls:ro
+    networks:
+      - rag-private
+    healthcheck:
+      test: ["CMD", "/qdrant/qdrant", "--version"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  ramone-memory:
+    image: ${RAMONE_MEMORY_IMAGE_REF:?RAMONE_MEMORY_IMAGE_REF must be an immutable image@sha256 ref}
+    restart: unless-stopped
+    env_file:
+      - path: ${RAG_SECRET_ROOT:?RAG_SECRET_ROOT must point to the protected secret directory}/ramone-memory.env
+        required: true
+    environment:
+      VECTOR_BACKEND: qdrant
+      QDRANT_URL: https://qdrant:6333
+      QDRANT_API_KEY: ${QDRANT__SERVICE__API_KEY:?QDRANT__SERVICE__API_KEY must be supplied by the protected qdrant.env}
+      QDRANT_VERIFY_TLS: "true"
+      QDRANT_CA_CERT: /run/qdrant-tls/ca.pem
+      WRITE_FREEZE: ${WRITE_FREEZE:?WRITE_FREEZE must be explicitly set}
+    volumes:
+      - qdrant-tls:/run/qdrant-tls:ro
+    ports:
+      - "127.0.0.1:${RAMONE_MEMORY_HOST_PORT:-8091}:8091"
+      - "172.17.0.1:${RAMONE_MEMORY_HOST_PORT:-8091}:8091"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - rag-private
+      - rag-publish
+    depends_on:
+      qdrant:
+        condition: service_healthy
+
+  atlas-corpus:
+    image: ${ATLAS_CORPUS_IMAGE_REF:?ATLAS_CORPUS_IMAGE_REF must be an immutable image@sha256 ref}
+    restart: unless-stopped
+    env_file:
+      - path: ${RAG_SECRET_ROOT:?RAG_SECRET_ROOT must point to the protected secret directory}/atlas-corpus.env
+        required: true
+    environment:
+      VECTOR_BACKEND: qdrant
+      QDRANT_URL: https://qdrant:6333
+      QDRANT_API_KEY: ${QDRANT__SERVICE__API_KEY:?QDRANT__SERVICE__API_KEY must be supplied by the protected qdrant.env}
+      QDRANT_VERIFY_TLS: "true"
+      QDRANT_CA_CERT: /run/qdrant-tls/ca.pem
+      WRITE_FREEZE: ${WRITE_FREEZE:?WRITE_FREEZE must be explicitly set}
+    volumes:
+      - qdrant-tls:/run/qdrant-tls:ro
+      - corpus-data:/srv/data
+    ports:
+      - "127.0.0.1:${ATLAS_CORPUS_HOST_PORT:-8092}:8092"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - rag-private
+      - rag-publish
+    depends_on:
+      qdrant:
+        condition: service_healthy
+
+  ollama-rag-kit:
+    image: ${OLLAMA_RAG_KIT_IMAGE_REF:?OLLAMA_RAG_KIT_IMAGE_REF must be an immutable image@sha256 ref}
+    restart: unless-stopped
+    env_file:
+      - path: ${RAG_SECRET_ROOT:?RAG_SECRET_ROOT must point to the protected secret directory}/ollama-rag-kit.env
+        required: true
+      - path: model-endpoint.env
+        required: true
+    environment:
+      VECTOR_BACKEND: qdrant
+      QDRANT_URL: https://qdrant:6333
+      QDRANT_API_KEY: ${QDRANT__SERVICE__API_KEY:?QDRANT__SERVICE__API_KEY must be supplied by the protected qdrant.env}
+      QDRANT_VERIFY_TLS: "true"
+      QDRANT_CA_CERT: /run/qdrant-tls/ca.pem
+      ATLAS_CORPUS_URL: http://atlas-corpus:8092
+      WRITE_FREEZE: ${WRITE_FREEZE:?WRITE_FREEZE must be explicitly set}
+    volumes:
+      - qdrant-tls:/run/qdrant-tls:ro
+    ports:
+      - "127.0.0.1:${OLLAMA_RAG_KIT_HOST_PORT:-8093}:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - rag-private
+      - rag-publish
+    depends_on:
+      qdrant:
+        condition: service_healthy
+
+volumes:
+  qdrant-data:
+    name: rag-estate_qdrant-data
+  qdrant-snapshots:
+    name: rag-estate_qdrant-snapshots
+  qdrant-tls:
+    name: rag-estate_qdrant-tls
+  corpus-data:
+    name: rag-estate_corpus-data
+
+# Subnets are pinned deliberately. Left to itself, docker allocates from
+# 172.17.0.0/12 and then falls through to 192.168.0.0/16 in /20 slices once
+# that pool is exhausted. On 2026-10-13 a rehearsal left seven unused networks
+# behind, the 172 pool ran out, and rag-estate_private landed on
+# 192.168.0.0/20 -- which swallows the house LAN 192.168.0.0/24, including the
+# router at 192.168.0.1. From inside WSL and from Home Assistant the whole LAN
+# became unreachable and the router's address resolved to WSL's own loopback.
+#
+# 10.80/10.81 sit outside every pool docker allocates from, so a future network
+# cannot be handed an overlapping range no matter how many are left lying
+# around. Avoids the LAN (192.168.0.0/24), the WSL adapter (172.23.x),
+# Tailscale (100.64.0.0/10) and the existing 10.2.0.x interface.
+networks:
+  rag-private:
+    name: rag-estate_private
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.80.0.0/24
+  # rag-publish is deliberately NOT pinned. It sits on 192.168.16.0/20, which
+  # does not overlap the house LAN, and rag-estate-cloudflared is attached to it
+  # without being part of this compose project -- so compose cannot remove or
+  # recreate it, and pinning a different subnet here would make `up` fail.
+  # Pin it only during a window where cloudflared is detached on purpose.
+  rag-publish:
+    name: rag-estate_publish
+    internal: false
